@@ -139,12 +139,12 @@ function limpaFormulario() {
     if (idInput) {
         idInput.readOnly = false;
     }
-    // 
-    if (idInput) {
+    // Limpa e mantém idade como readOnly
+    if (idadeInput) {
         idadeInput.value = " ";
         idInput.readOnly = true;
     }
-};
+};//fim
 
 
 //  --- Funções CRUD (Create, Read, Update, Delete) ---
@@ -154,15 +154,114 @@ function limpaFormulario() {
  *  - Se o ID estiver editável(modo Adiciona): Impede a adição se ID já existir
  *  - Se o ID não estiver editável (modo Atualizar): Atualiza o registro existente
  */
-function salvar(){
+function salvar() {
     // 1. Valida o formulário primeiro
-    if(!validaFormulario){
-        return; //interrompe se a validação 
+    if (!validaFormulario()) {
+        return; //interrompe se a validação falhar
     }
 
     // 2. Obtém os valores dos campos do formulário
-    const idInput = document.getElementById('id');
-    const nomeInput = document.getElementById('nome');
-    const idadeInput = document.getElementById('idadeInput');
-    
+    const idInput = document.getElementById('id'); // Pega o elemento input do ID
+    const id = idInput.value.trim(); // Pega o valor do ID
+    const isUpdating = idInput.readOnly; // Verifica se o campo ID está bloqueado (true se estiver atualizando)
+
+    const nome = document.getElementById("nome").value.trim();
+    const endereco = document.getElementById("endereco").value.trim();
+    const cep = document.getElementById("cep").value.trim();
+    const bairro = document.getElementById("bairro").value.trim();
+    const uf = document.getElementById("uf").value.trim().toUpperCase();
+    const dataNascimento = document.getElementById("dataNascimento").value;
+
+    // 3. Cria o objeto 'pessoa' com os dados coletados
+    // ****
+    const pessoa = { id, nome, endereco, cep, bairro, uf, dataNascimento };
+    // ****
+    // 4. Obtém a lista atual de pessoas do localStorage
+    let pessoas = getPessoaLocalStorage();
+    // Procura pelo indice da pessoa com o mesmo ID na lista 
+    const index = pessoa.findIndex(p => p.id === id);
+
+    // 5. Decide a ação baseada se é uma atualização ou adição 
+    if(isUpdating){
+        // --- MODO ATUALIZAÇãO (Id está readOnly) ---
+        if(index !== 1) {
+            // ID encontrado, como esperado para uma atualização 
+            pessoas[index] = pessoa; //Atualiza os dados da pessoa existente no array 
+            // `${id}` - recurso de Jquery
+            alert(`Dados da pessoa com ID/CPF "${id}" atualizados com sucesso!`);
+            salvarPessoasLocalStorage(pessoa); // Salva o array modificado
+            limpaFormulario(); //Limpa o formulário (e torna o ID editável novamente)
+        } else {
+            // Isso não deveria acontecer se o fluxo estiver correto (carregou -> editou -> salvou)
+            //Mas é uma segurança extra.
+            alert(`Erro ao atualizar: O ID/CPF "${id}" que estava sendo editado não foi encontrado. Por favor, limpe o formulário e carregue novamente.`);
+
+            // Não limpar o formulárioaqui pode ajudar o usuário a ver o ID problemático
+        }
+    }else{
+        //  --- MODO ADIÇÃO (ID está editavel) ---
+        if (index !== -1) {
+            // ERRO: Tentando adicionar um ID que já existe 
+            alert(`Erro: O ID/CPF "${id}" já está cadastrado. \nNão é possivel adicionar um registro duplicado. \nUse um ID diferente ou carregue o existente.`);
+            idInput.focus(); // Coloca o foco de volta no campo ID para o usuário corrigir
+            return; //Interrompe a função AQUI. Nada será salvo ou limpo.
+        }else{
+            //ID é novo, pode adicionar 
+            pessoas.push(pessoa); // Adiciona a nova pessoa ao array
+            alert(`Pessoa com ID/CPF "${id}" cadastrado com sucesso!`);
+            salvarPessoasLocalStorage(pessoas); //Salva o array atualizado
+            limpaFormulario(); // Limpa o formulário para a proxima entrada
+        }
+    }
+
+}
+
+
+// REMOVIDO: A função exibirDados() foi completamente removida
+
+/**
+ * Preenche o formulário com os dados da pessoa para edição (chamado via prompt)
+ * @param {string} idParaEditar - o ID da pessoa a ser carregada no formulário
+ */
+
+function editar(idParaEditar){
+    // Obtem a lista de pessoas 
+    const pessoas = getPessoaLocalStorage();
+    // Encontra a pessoa pelo ID
+    const pessoa = pessoas.find(p => p.id === idParaEditar);
+
+    // Verifica se a pessoa foi encontrada
+    if (!pessoa) {
+        alert("Pessoa não encontrada para edição. ID: "+idParaEditar);
+        return;
+    }
+
+    // Obtem referencias aos campos do formulario
+    const idInput = document.getElementById("id");
+    const idadeInput = document.getElementById("idadeInput");
+
+    // Preenche o formulario com os dados 
+    idInput.value = pessoa.id;
+    idInput.readOnly = true; //Impede a edição do ID
+    document.getElementById("nome").value = pessoa.nome;
+    document.getElementById("enderco").value = pessoa.endereco || "";
+    document.getElementById("cep").value = pessoa.cep || "";
+    document.getElementById("bairro").value = pessoa.bairro || "";
+    document.getElementById("uf").value = pessoa.uf || "";
+    document.getElementById("dataNascimento").value = pessoa.dataNascimento;
+
+    // Calcula e exibe a idade no campo readOnly
+    if(idadeInput){
+        idadeInput.value = calculaIdade(pessoa.dataNascimento);
+        idadeInput.readOnly = true;
+    }
+
+    // Rola a pagina para o formulario ficar visivel 
+    document.getElementById("meuFormulario").scrollIntoView({ behavior: 'smooth'});
+
+    /**
+     * 'scrollIntoView' esse método faz a rolagem do elemento selecionado para a região visivel da janela do navegador 
+     * { behavior: 'smooth'} faz com que se comporte suavemente (behavior = comportamento) (smooth = suavemente)
+     */
+
 }
